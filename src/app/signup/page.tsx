@@ -7,6 +7,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 export default function SignUp() {
     const [error, setError] = useState('');
@@ -60,11 +61,62 @@ export default function SignUp() {
 
  
 
-    return (    
-        <AuthForm
-            func={signUp}
-            signup={true}
-            errorMsg={error}
-        />
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-green-100">
+        <div className="bg-white w-2/5 p-10 shadow-md rounded-lg">
+          <h2 className="text-2xl font-semibold mb-4 text-center text-green-600">Signup</h2>
+          {error && <div className="mb-4 text-red-600">{error}</div>}
+          <form
+              onSubmit={(e) => {
+                  e.preventDefault();
+                  const email = (e.target as any).email.value;
+                  const password = (e.target as any).password.value;
+                  const username = (e.target as any).username.value;
+                  signUp(email, password, username);
+              }}
+              className="space-y-4"
+          >
+              <div>
+                  <label className="block text-sm font-medium">User Name</label>
+                  <input
+                      type="username"
+                      name="username"
+                      className="w-full border border-gray-300 p-2 rounded"
+                      required
+                  />
+              </div>
+              <div>
+                  <label className="block text-sm font-medium">Email</label>
+                  <input
+                      type="email"
+                      name="email"
+                      className="w-full border border-gray-300 p-2 rounded"
+                      required
+                  />
+              </div>
+              <div>
+                  <label className="block text-sm font-medium">Password</label>
+                  <input
+                      type="password"
+                      name="password"
+                      className="w-full border border-gray-300 p-2 rounded"
+                      required
+                  />
+              </div>
+              <button
+                  type="submit"
+                  className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-800 cursor-pointer transition duration-400"
+              >
+                 SignUp
+              </button>
+          </form>
+          <p className="text-center mt-3">Already Have An Account  <Link className="text-green-600" href="/login">Login</Link></p>
+      </div>
+    </div>
+        // <AuthForm
+        //     func={signUp}
+        //     signup={true}
+        //     errorMsg={error}
+        // />
     );
 }

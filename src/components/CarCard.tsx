@@ -9,17 +9,22 @@ interface Car {
 
 export default function CarCard({ car, onBook }: { car: Car; onBook: () => void }) {
     return (
-        <div className="bg-white shadow rounded p-4">
+        <div className="bg-green-100 shadow rounded p-4">
             <img src={car.image} alt={car.name} className="w-full h-40 object-cover rounded mb-4" />
-            <h2 className="text-xl font-semibold">{car.name}</h2>
+          <div className="flex justify-between items-center content-center">
+              <h2 className="text-xl font-semibold">{car.name}</h2>
             <p className="text-sm text-gray-500">{car.brand}</p>
             <p className="mt-2 font-medium">${car.pricePerDay} / day</p>
-            <button
+          <div className="">
+              <button
                 onClick={onBook}
-                className="mt-4 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                className=" bg-green-600 p-2 text-white rounded hover:bg-green-700"
             >
                 Book Now
             </button>
+          </div>
+          </div>
+            
         </div>
     );
 }

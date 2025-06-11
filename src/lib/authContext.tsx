@@ -1,5 +1,4 @@
 "use client";
-
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -22,7 +21,7 @@ type ContextType = {
     user: UserType | null;
     setUser: (user: UserType | null) => void;
     resendVerificationEmail: () => void;
-    logout: () => Promise<void>; // Added logout to the context type
+    logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<ContextType | null>(null);

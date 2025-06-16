@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { collection, query, getDocs, where, orderBy, limit } from 'firebase/firestore';
 import { Car, Booking, RentalCompany, User } from '@/types';
+import { useAuthContext } from '@/lib/authContext';
 
 export default function AdminDashboard() {
     const router = useRouter();
@@ -13,25 +14,28 @@ export default function AdminDashboard() {
     const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const {user} = useAuthContext();
 
     useEffect(() => {
         const loadDashboardData = async () => {
             try {
-                const user = auth.currentUser;
+
                 if (!user) {
                     router.push('/login');
                     return;
                 }
 
                 // Verify admin role
-                const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', user.uid)));
-                if (userDoc.empty || userDoc.docs[0].data().role !== 'admin') {
+                if (user.role !== 'admin') {
                     router.push('/');
                     return;
                 }
 
                 // Load companies
-                const companiesQuery = query(collection(db, 'companies'));
+                const companiesQuery = query(
+                    collection(db, 'users'),
+                    where('role', '==', 'company')
+                );
                 const companiesSnapshot = await getDocs(companiesQuery);
                 const companiesData = companiesSnapshot.docs.map(doc => ({
                     id: doc.id,
@@ -182,6 +186,6 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </div>
-        </div>
-    );
-} 
+        </div>
+    );
+}

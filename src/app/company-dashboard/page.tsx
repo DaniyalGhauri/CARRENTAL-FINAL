@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc as firestoreDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { Car, Booking, RentalCompany } from '@/types';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 
 export default function CompanyDashboard() {
     const router = useRouter();
@@ -13,30 +15,46 @@ export default function CompanyDashboard() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [companyDetails, setCompanyDetails] = useState<RentalCompany | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [isNetworkError, setIsNetworkError] = useState(false);
+
+    useEffect(() => {
+        AOS.init({
+            duration: 1000,
+            once: true,
+        });
+    }, []);
 
     useEffect(() => {
         const loadDashboardData = async () => {
             try {
+                setError(null);
+                setIsNetworkError(false);
                 const user = auth.currentUser;
                 if (!user) {
+                    router.push('/company-login');
+                    return;
+                }
+
+                // Load company details from users collection
+                const companyDoc = await getDoc(firestoreDoc(db, 'users', user.uid));
+                if (!companyDoc.exists()) {
+                    setError('Company profile not found. Please complete your registration.');
                     router.push('/company-registration');
                     return;
                 }
 
-                // Load company details
-                const companyQuery = query(
-                    collection(db, 'companies'),
-                    where('email', '==', user.email)
-                );
-                const companySnapshot = await getDocs(companyQuery);
-                if (!companySnapshot.empty) {
-                    const companyData = {
-                        id: companySnapshot.docs[0].id,
-                        ...companySnapshot.docs[0].data()
-                    } as RentalCompany;
-                    setCompanyDetails(companyData);
+                const companyData = companyDoc.data();
+                if (companyData.role !== 'company') {
+                    setError('Access denied. This account is not registered as a company.');
+                    router.push('/company-login');
+                    return;
                 }
+
+                setCompanyDetails({
+                    id: companyDoc.id,
+                    ...companyData
+                } as RentalCompany);
 
                 // Load cars
                 const carsQuery = query(
@@ -55,28 +73,48 @@ export default function CompanyDashboard() {
                     collection(db, 'bookings'),
                     where('companyId', '==', user.uid)
                 );
-                
                 const bookingsSnapshot = await getDocs(bookingsQuery);
-                const bookingsData = bookingsSnapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        carId: data.carId,
-                        userId: data.userId,
-                        companyId: data.companyId,
-                        startDate: new Date(data.startDate.seconds * 1000),
-                        endDate: new Date(data.endDate.seconds * 1000),
-                        totalCost: data.totalCost,
-                        status: data.status,
-                        paymentStatus: data.paymentStatus,
-                        createdAt: new Date(data.createdAt.seconds * 1000)
-                    } as Booking;
-                });
+                const bookingsData = await Promise.all(
+                    bookingsSnapshot.docs.map(async (doc) => {
+                        const bookingData = doc.data();
+                        const userDoc = await getDoc(firestoreDoc(db, 'users', bookingData.userId));
+                        return {
+                            id: doc.id,
+                            ...bookingData,
+                            user: userDoc.exists() ? userDoc.data() : null
+                        } as unknown as Booking;
+                    })
+                );
                 setBookings(bookingsData);
+
+                // Update car availability based on active bookings
+                const activeBookings = bookingsData.filter(b => 
+                    b.status !== 'cancelled' && 
+                    new Date() >= b.startDate && 
+                    new Date() <= b.endDate
+                );
+
+                const updatedCars = carsData.map(car => ({
+                    ...car,
+                    isAvailable: !activeBookings.some(booking => booking.carId === car.id)
+                }));
+                setCars(updatedCars);
 
             } catch (err) {
                 console.error('Error loading dashboard data:', err);
-                setError('Failed to load dashboard data');
+                if (err instanceof Error) {
+                    if (err.message.includes('network') || err.message.includes('permission-denied')) {
+                        setError('Network error. Please check your connection and try again.');
+                        setIsNetworkError(true);
+                    } else if (err.message.includes('not-found')) {
+                        setError('Company profile not found. Please complete your registration.');
+                        router.push('/company-registration');
+                    } else {
+                        setError('Failed to load dashboard data. Please try again later.');
+                    }
+                } else {
+                    setError('An unexpected error occurred. Please try again later.');
+                }
             } finally {
                 setLoading(false);
             }
@@ -87,7 +125,9 @@ export default function CompanyDashboard() {
 
     const handleToggleAvailability = async (carId: string, currentStatus: boolean) => {
         try {
-            const carRef = doc(db, 'cars', carId);
+            setError(null);
+            setIsNetworkError(false);
+            const carRef = firestoreDoc(db, 'cars', carId);
             await updateDoc(carRef, {
                 isAvailable: !currentStatus
             });
@@ -100,13 +140,24 @@ export default function CompanyDashboard() {
             ));
         } catch (err) {
             console.error('Error updating car availability:', err);
-            setError('Failed to update car availability');
+            if (err instanceof Error) {
+                if (err.message.includes('network') || err.message.includes('permission-denied')) {
+                    setError('Network error. Please check your connection and try again.');
+                    setIsNetworkError(true);
+                } else {
+                    setError('Failed to update car availability. Please try again.');
+                }
+            } else {
+                setError('An unexpected error occurred. Please try again.');
+            }
         }
     };
 
     const handleUpdateBookingStatus = async (bookingId: string, newStatus: Booking['status']) => {
         try {
-            const bookingRef = doc(db, 'bookings', bookingId);
+            setError(null);
+            setIsNetworkError(false);
+            const bookingRef = firestoreDoc(db, 'bookings', bookingId);
             await updateDoc(bookingRef, {
                 status: newStatus
             });
@@ -119,13 +170,21 @@ export default function CompanyDashboard() {
             ));
         } catch (err) {
             console.error('Error updating booking status:', err);
-            setError('Failed to update booking status');
+            if (err instanceof Error) {
+                if (err.message.includes('network') || err.message.includes('permission-denied')) {
+                    setError('Network error. Please check your connection and try again.');
+                    setIsNetworkError(true);
+                } else {
+                    setError('Failed to update booking status. Please try again.');
+                }
+            } else {
+                setError('An unexpected error occurred. Please try again.');
+            }
         }
     };
 
     const formatDate = (dateString: string | Date) => {
         try {
-            // Handle both string and Date objects
             const date = typeof dateString === 'string' 
                 ? new Date(dateString.replace(' at ', 'T').replace(' UTC+5', '+05:00'))
                 : new Date(dateString);
@@ -147,40 +206,133 @@ export default function CompanyDashboard() {
         }
     };
 
-    if (loading) {
-        return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
-    }
-
-    if (error) {
-        return <div className="text-red-500 text-center p-4">{error}</div>;
-    }
-
     const calculateTotalEarnings = () => {
         return bookings
             .filter(b => b.status === 'completed')
             .reduce((total, booking) => total + booking.totalCost, 0);
     };
 
+    const calculatePendingEarnings = () => {
+        return bookings
+            .filter(b => b.status === 'pending' || b.status === 'confirmed')
+            .reduce((total, booking) => total + booking.totalCost, 0);
+    };
+
+    const calculateActiveBookings = () => {
+        return bookings.filter(b => 
+            b.status !== 'cancelled' && 
+            new Date() >= b.startDate && 
+            new Date() <= b.endDate
+        ).length;
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+                <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <p className="mt-4 text-gray-400">Loading dashboard data...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+                <div className={`max-w-md w-full ${isNetworkError ? 'bg-yellow-500/10' : 'bg-red-500/10'} p-6 rounded-xl backdrop-blur-sm border ${isNetworkError ? 'border-yellow-500/20' : 'border-red-500/20'}`} data-aos="fade-up">
+                    <div className="flex items-center mb-4">
+                        {isNetworkError ? (
+                            <svg className="h-6 w-6 text-yellow-400 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        ) : (
+                            <svg className="h-6 w-6 text-red-400 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                        )}
+                        <h2 className={`text-xl font-semibold ${isNetworkError ? 'text-yellow-400' : 'text-red-400'}`}>
+                            {isNetworkError ? 'Connection Error' : 'Error'}
+                        </h2>
+                    </div>
+                    <p className={`${isNetworkError ? 'text-yellow-300' : 'text-red-300'} mb-4`}>{error}</p>
+                    {isNetworkError && (
+                        <p className="text-yellow-300/80 text-sm mb-4">
+                            Please check your internet connection and try again.
+                        </p>
+                    )}
+                    <div className="flex space-x-4">
+                        <button
+                            onClick={() => window.location.reload()}
+                            className={`flex-1 px-4 py-2 rounded-lg ${isNetworkError ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-red-500 hover:bg-red-600'} text-white transition-colors duration-300`}
+                        >
+                            Try Again
+                        </button>
+                        <button
+                            onClick={() => router.push('/company-login')}
+                            className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors duration-300"
+                        >
+                            Return to Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="min-h-screen bg-gray-100 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
             <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                    <div className="flex justify-between items-center">
+                {/* Header with Stats */}
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-6 border border-gray-700/50" data-aos="fade-up">
+                    <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">
+                            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
                                 {companyDetails?.name || 'Company Dashboard'}
                             </h1>
-                            <p className="text-gray-600">
-                                Total Earnings: ${calculateTotalEarnings().toFixed(2)}
+                            <p className="text-gray-400 mt-1">
+                                Manage your cars and bookings
                             </p>
                         </div>
                         <Link
                             href="/company-dashboard/add-car"
-                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                            className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-300"
                         >
                             Add New Car
                         </Link>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-lg border border-gray-600/50" data-aos="fade-up" data-aos-delay="100">
+                            <h3 className="text-lg font-semibold text-blue-400">Total Earnings</h3>
+                            <p className="text-2xl font-bold text-white">
+                                ${calculateTotalEarnings().toFixed(2)}
+                            </p>
+                            <p className="text-sm text-gray-400 mt-1">
+                                From completed bookings
+                            </p>
+                        </div>
+
+                        <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-lg border border-gray-600/50" data-aos="fade-up" data-aos-delay="200">
+                            <h3 className="text-lg font-semibold text-purple-400">Pending Earnings</h3>
+                            <p className="text-2xl font-bold text-white">
+                                ${calculatePendingEarnings().toFixed(2)}
+                            </p>
+                            <p className="text-sm text-gray-400 mt-1">
+                                From pending and confirmed bookings
+                            </p>
+                        </div>
+
+                        <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-lg border border-gray-600/50" data-aos="fade-up" data-aos-delay="300">
+                            <h3 className="text-lg font-semibold text-pink-400">Active Bookings</h3>
+                            <p className="text-2xl font-bold text-white">
+                                {calculateActiveBookings()}
+                            </p>
+                            <p className="text-sm text-gray-400 mt-1">
+                                Currently active rentals
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -224,8 +376,7 @@ export default function CompanyDashboard() {
                     </div>
                 </div>
 
-                {/* Bookings Section */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">Recent Bookings</h2>
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
@@ -233,6 +384,9 @@ export default function CompanyDashboard() {
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Car
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Booked By
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Dates
@@ -243,15 +397,24 @@ export default function CompanyDashboard() {
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Amount
                                     </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="divide-y divide-gray-200">
                                 {bookings.map((booking) => {
                                     const car = cars.find(c => c.id === booking.carId);
                                     return (
                                         <tr key={booking.id}>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 {car?.name || 'Unknown Car'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div>
+                                                    <p className="font-medium">{booking.userName}</p>
+                                                    <p className="text-sm text-gray-500">{booking.userEmail}</p>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
@@ -274,6 +437,17 @@ export default function CompanyDashboard() {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 ${booking.totalCost}
                                             </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <button
+                                                    onClick={() => handleToggleAvailability(car?.id || '', car?.isAvailable || false)}
+                                                    className={`px-3 py-1 rounded text-sm font-medium
+                                                        ${car?.isAvailable 
+                                                            ? 'bg-red-100 text-red-800 hover:bg-red-200' 
+                                                            : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
+                                                >
+                                                    {car?.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
+                                                </button>
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -284,4 +458,4 @@ export default function CompanyDashboard() {
             </div>
         </div>
     );
-} 
+}

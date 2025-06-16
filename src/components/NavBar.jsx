@@ -2,44 +2,121 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { useAuthContext } from '@/lib/authContext';
+import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin, FaPhone, FaEnvelope } from 'react-icons/fa';
 
 const Navbar = () => {
-  const { user, logout } = useAuthContext(); // make sure `logout` function is provided in context
+  const { user, logout } = useAuthContext();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  console.log('User:', user);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(false);
+    
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [user]);
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
   const handleLogout = async () => {
-    await logout(); // adjust if logout is synchronous
+    await logout();
     router.push('/');
   };
 
+  if (isLoading) {
+    return null;
+  }
+
   return (
-    <nav className="bg-white shadow-sm sticky top-0 z-50">
+    <nav className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-lg' : 'bg-gradient-to-br from-slate-900/95 to-slate-800/95'}`}>
+      {/* Top Bar */}
+      <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-b border-blue-500/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-10">
+            {/* Contact Information */}
+            <div className="flex items-center space-x-6">
+              <a href="tel:+1234567890" className="flex items-center text-gray-300 hover:text-blue-400 transition-colors duration-300">
+                <FaPhone className="mr-2" />
+                <span className="hidden sm:inline text-sm">+1 (234) 567-890</span>
+              </a>
+              <a href="mailto:info@driveeasy.com" className="flex items-center text-gray-300 hover:text-blue-400 transition-colors duration-300">
+                <FaEnvelope className="mr-2" />
+                <span className="hidden sm:inline text-sm">info@driveeasy.com</span>
+              </a>
+            </div>
+
+            {/* Social Media Icons */}
+            <div className="flex items-center space-x-4">
+              <a 
+                href="https://facebook.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-gray-300 hover:text-blue-400 transition-colors duration-300"
+              >
+                <FaFacebook size={16} />
+              </a>
+              <a 
+                href="https://twitter.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-gray-300 hover:text-blue-400 transition-colors duration-300"
+              >
+                <FaTwitter size={16} />
+              </a>
+              <a 
+                href="https://instagram.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-gray-300 hover:text-blue-400 transition-colors duration-300"
+              >
+                <FaInstagram size={16} />
+              </a>
+              <a 
+                href="https://linkedin.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-gray-300 hover:text-blue-400 transition-colors duration-300"
+              >
+                <FaLinkedin size={16} />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <Link href="/" className="text-xl font-bold text-blue-600">
-            Car Rental
+          <Link href="/" className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-300 hover:from-blue-300 hover:via-indigo-300 hover:to-blue-200 transition-all duration-300">
+            DriveSmart
           </Link>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-6">
-            <Link href="/" className="text-gray-900 hover:text-blue-600 transition">Home</Link>
-            <Link href="/cars" className="text-gray-500 hover:text-blue-600 transition">cars</Link>
-            <Link href="/bookings" className="text-gray-500 hover:text-blue-600 transition">Bookings</Link>
-            <Link href="/services" className="text-gray-500 hover:text-blue-600 transition">Services</Link>
-            <Link href="/contact" className="text-gray-500 hover:text-blue-600 transition">Contact</Link>
+          <div className="hidden md:flex items-center space-x-8">
+            <Link href="/" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Home</Link>
+            {user?.role !== 'company' && (
+              <>
+                <Link href="/cars" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Cars</Link>
+                <Link href="/bookings" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Bookings</Link>
+              </>
+            )}
+            <Link href="/services" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Services</Link>
+            <Link href="/contact" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Contact</Link>
             {user?.role === 'company' && (
-              <Link href="/company-dashboard" className="text-gray-500 hover:text-blue-600 transition">Dashboard</Link>
+              <Link href="/company-dashboard" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Dashboard</Link>
             )}
             {user?.role === 'admin' && (
-              <Link href="/admin-dashboard" className="block text-gray-500 hover:text-blue-600">Dashboard</Link>
+              <Link href="/admin-dashboard" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Dashboard</Link>
             )}
           </div>
 
@@ -48,7 +125,7 @@ const Navbar = () => {
             {user ? (
               <button
                 onClick={handleLogout}
-                className="text-gray-600 hover:text-red-600 transition"
+                className="px-4 py-2 text-gray-300 hover:text-red-400 transition-colors duration-300 border border-blue-500/20 hover:border-red-500/50 rounded-xl"
               >
                 Logout
               </button>
@@ -56,19 +133,19 @@ const Navbar = () => {
               <>
                 <button
                   onClick={() => router.push('/login')}
-                  className="text-gray-600 hover:text-blue-600 transition"
+                  className="text-gray-300 hover:text-blue-400 transition-colors duration-300"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={() => router.push('/signup')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] transition-all duration-300"
                 >
                   Register
                 </button>
                 <button
                   onClick={() => router.push('/company-login')}
-                  className="text-gray-600 hover:text-blue-600 transition"
+                  className="text-gray-300 hover:text-blue-400 transition-colors duration-300"
                 >
                   Company Login
                 </button>
@@ -78,7 +155,10 @@ const Navbar = () => {
 
           {/* Mobile Menu Toggle */}
           <div className="md:hidden flex items-center">
-            <button onClick={toggleMenu} className="text-gray-500 focus:outline-none">
+            <button 
+              onClick={toggleMenu} 
+              className="text-gray-300 hover:text-blue-400 transition-colors duration-300 focus:outline-none"
+            >
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
@@ -87,48 +167,54 @@ const Navbar = () => {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden px-4 pb-4 space-y-2 bg-white shadow-sm">
-          <Link href="/" className="block text-gray-900 hover:text-blue-600">Home</Link>
-          <Link href="/about" className="block text-gray-500 hover:text-blue-600">About</Link>
-          <Link href="/vehicles" className="block text-gray-500 hover:text-blue-600">Vehicles</Link>
-          <Link href="/services" className="block text-gray-500 hover:text-blue-600">Services</Link>
-          <Link href="/contact" className="block text-gray-500 hover:text-blue-600">Contact</Link>
-          {user?.role === 'company' && (
-            <Link href="/company-dashboard" className="block text-gray-500 hover:text-blue-600">Dashboard</Link>
-          )}
-          {user?.role === 'admin' && (
-            <Link href="/admin-dashboard" className="block text-gray-500 hover:text-blue-600">Dashboard</Link>
-          )}
+        <div className="md:hidden bg-gradient-to-br from-slate-900 to-slate-800 border-t border-blue-500/20">
+          <div className="px-4 py-4 space-y-3">
+            <Link href="/" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Home</Link>
+            {user?.role !== 'company' && (
+              <>
+                <Link href="/cars" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Cars</Link>
+                <Link href="/bookings" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Bookings</Link>
+              </>
+            )}
+            <Link href="/services" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Services</Link>
+            <Link href="/contact" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Contact</Link>
+            {user?.role === 'company' && (
+              <Link href="/company-dashboard" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Dashboard</Link>
+            )}
+            {user?.role === 'admin' && (
+              <Link href="/admin-dashboard" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Dashboard</Link>
+            )}
 
-          {user ? (
-            <button
-              onClick={handleLogout}
-              className="w-full text-left text-gray-600 hover:text-red-600"
-            >
-              Logout
-            </button>
-          ) : (
-            <>
+            {user ? (
               <button
-                onClick={() => router.push('/login')}
-                className="w-full text-left text-gray-600 hover:text-blue-600"
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 text-gray-300 hover:text-red-400 transition-colors duration-300 border border-blue-500/20 hover:border-red-500/50 rounded-xl"
               >
-                Sign In
+                Logout
               </button>
-              <button
-                onClick={() => router.push('/signup')}
-                className="w-full text-left px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-              >
-                Register
-              </button>
-              <button
-                onClick={() => router.push('/company-login')}
-                className="w-full text-left text-gray-600 hover:text-blue-600"
-              >
-                Company Login
-              </button>
-            </>
-          )}
+            ) : (
+              <>
+                <button
+                  onClick={() => router.push('/login')}
+                  className="w-full text-left px-4 py-2 text-gray-300 hover:text-blue-400 transition-colors duration-300"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => router.push('/signup')}
+                  className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] transition-all duration-300"
+                >
+                  Register
+                </button>
+                <button
+                  onClick={() => router.push('/company-login')}
+                  className="w-full text-left px-4 py-2 text-gray-300 hover:text-blue-400 transition-colors duration-300"
+                >
+                  Company Login
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </nav>

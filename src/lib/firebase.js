@@ -5,6 +5,7 @@ import { getStorage } from 'firebase/storage';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { sendWhatsAppMessage } from './whatsapp';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -29,10 +30,6 @@ const uploadFile = async (file, path) => {
     const storageRef = ref(storage, path);
     await uploadBytes(storageRef, file);
     return await getDownloadURL(storageRef);
-};
-const registerCompany = async (companyData) => {
-    const companiesRef = collection(db, 'companies');
-    await addDoc(companiesRef, companyData);
 };
 
 const addCar = async (carData) => {
@@ -114,14 +111,55 @@ const getAvailableCars = async () => {
 };
 
 const createBooking = async (bookingData) => {
-    const bookingsRef = collection(db, 'bookings');
-    const bookingWithTimestamp = {
-        ...bookingData,
-        startDate: Timestamp.fromDate(bookingData.startDate),
-        endDate: Timestamp.fromDate(bookingData.endDate),
-        createdAt: Timestamp.fromDate(bookingData.createdAt)
-    };
-    await addDoc(bookingsRef, bookingWithTimestamp);
+    try {
+        const bookingsRef = collection(db, 'bookings');
+        const bookingWithTimestamp = {
+            ...bookingData,
+            startDate: Timestamp.fromDate(bookingData.startDate),
+            endDate: Timestamp.fromDate(bookingData.endDate),
+            createdAt: Timestamp.fromDate(bookingData.createdAt)
+        };
+        
+        // Create the booking
+        const bookingRef = await addDoc(bookingsRef, bookingWithTimestamp);
+        
+        // Get car details
+        const car = await getCar(bookingData.carId);
+        
+        // Get user details
+        const userRef = doc(db, 'users', bookingData.userId);
+        const userDoc = await getDoc(userRef);
+        const userData = userDoc.data();
+        
+        // Prepare WhatsApp message
+        const message = `
+🚗 *New Car Booking Confirmation*
+
+*Booking Details:*
+Car: ${car.name}
+Start Date: ${bookingData.startDate.toLocaleDateString()}
+End Date: ${bookingData.endDate.toLocaleDateString()}
+Total Cost: $${bookingData.totalCost}
+
+*Customer Details:*
+Name: ${userData?.name || 'N/A'}
+Phone: ${userData?.phone || 'N/A'}
+
+Booking ID: ${bookingRef.id}
+
+Thank you for choosing our service! 🎉
+        `;
+
+        // Send WhatsApp notification to the company
+        if (userData?.phone) {
+            await sendWhatsAppMessage(userData.phone, message);
+        }
+
+        return bookingRef.id;
+    } catch (error) {
+        console.error('Error creating booking:', error);
+        throw error;
+    }
 };
 
 const getUserBookings = async (userId) => {
@@ -174,4 +212,4 @@ const getCar = async (carId) => {
     };
 };
 
-export { app, db, storage, googleProvider, auth, uploadFile, registerCompany, addCar, getAvailableCars, createBooking, addTestCar, getUserBookings, updateBooking, getCar };
+export { app, db, storage, googleProvider, auth, uploadFile, addCar, getAvailableCars, createBooking, addTestCar, getUserBookings, updateBooking, getCar };

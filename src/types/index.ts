@@ -30,6 +30,8 @@ export interface Booking {
     id: string;
     carId: string;
     userId: string;
+    userName: string;
+    userEmail: string;
     companyId: string;
     startDate: Date;
     endDate: Date;
@@ -59,5 +61,5 @@ export interface User {
     phone: string;
     role: 'customer' | 'company' | 'admin';
     bookings: string;
-    createdAt: Date;
+    createdAt: Date;
 }

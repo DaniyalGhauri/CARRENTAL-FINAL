@@ -3,17 +3,19 @@
 import { FirebaseError } from "firebase/app";
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+import { useAuthContext } from '@/lib/authContext';
 
 export default function CompanyLogin() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const { user, logout } = useAuthContext();
 
     useEffect(() => {
         AOS.init({
@@ -30,26 +32,34 @@ export default function CompanyLogin() {
     const login = async (email: string, password: string) => {
         setIsLoading(true);
         try {
-            // First check if the user is a company
-            const companiesQuery = query(
-                collection(db, 'users'),
-                where('email', '==', email)
-            );
-            const companySnapshot = await getDocs(companiesQuery);
+            // First authenticate the user
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const uid = userCredential.user.uid;
+
+            // Check if the user is a company
+            const userDocRef = doc(db, 'users', uid);
+            const userDoc = await getDoc(userDocRef);
             
-            if (companySnapshot.empty) {
-                throw new Error('No company account found with this email.');
+            if (!userDoc.exists()) {
+                throw new Error('User account not found.');
             }
 
-            // If company exists, proceed with login
-            await signInWithEmailAndPassword(auth, email, password);
+            const userData = userDoc.data();
+            
+            if (userData.role !== 'company') {
+                // Sign out the user since they're not a company
+                await logout();
+                throw new Error('You are not a company. Please use the regular login.');
+            }
+
+            // If user is a company, redirect to company dashboard
             router.push('/company-dashboard');
         } catch (err: unknown) {
             setIsLoading(false);
             if (err instanceof FirebaseError) {
                 switch (err.code) {
                     case "auth/user-not-found":
-                        resetErrorAfterTimeout("No company account found with this email.");
+                        resetErrorAfterTimeout("No account found with this email.");
                         break;
                     case "auth/wrong-password":
                         resetErrorAfterTimeout("Incorrect password. Please try again.");

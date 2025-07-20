@@ -82,6 +82,13 @@ export default function BookingsPage() {
                 paymentStatus: 'completed'
             });
 
+            // Find the booking to get carId
+            const booking = bookings.find(b => b.id === bookingId);
+            if (booking && booking.carId) {
+                const carRef = doc(db, 'cars', booking.carId);
+                await updateDoc(carRef, { isAvailable: false });
+            }
+
             setBookings(bookings.map(booking =>
                 booking.id === bookingId
                     ? { ...booking, paymentStatus: 'completed' }

@@ -18,6 +18,7 @@ export default function CarsPage() {
         minPrice: '',
         maxPrice: '',
         manufacturer: '',
+        category: '',
         sortBy: ''
     });
     const [selectedCar, setSelectedCar] = useState<Car | null>(null);
@@ -35,9 +36,17 @@ export default function CarsPage() {
         const loadCars = async () => {
             try {
                 const availableCars = await getAvailableCars();
-                setCars(availableCars);
-                setFilteredCars(availableCars);
+                // Cast the response to Car[] type
+                const validCars = availableCars.map(car => ({
+                    ...car,
+                    reviews: car.reviews || [],
+                    averageRating: car.averageRating || 0,
+                })) as Car[];
+                
+                setCars(validCars);
+                setFilteredCars(validCars);
             } catch (err) {
+                console.error('Error loading cars:', err);
                 setError('Failed to load available cars');
             } finally {
                 setLoading(false);
@@ -61,23 +70,54 @@ export default function CarsPage() {
     };
 
     const applyFilters = (term: string, currentFilters: typeof filters) => {
-        let filtered = cars.filter(car => {
-            const matchesSearch = car.name.toLowerCase().includes(term) ||
-                                  car.manufacturer.toLowerCase().includes(term);
-            const matchesPrice = (!currentFilters.minPrice || car.pricePerDay >= Number(currentFilters.minPrice)) &&
-                                 (!currentFilters.maxPrice || car.pricePerDay <= Number(currentFilters.maxPrice));
-            const matchesManufacturer = !currentFilters.manufacturer || car.manufacturer === currentFilters.manufacturer;
+        let filtered = [...cars]; // Create a new array to avoid mutation
 
-            return matchesSearch && matchesPrice && matchesManufacturer;
-        });
+        // Apply search term filter
+        if (term) {
+            filtered = filtered.filter(car => 
+                car.name.toLowerCase().includes(term) ||
+                car.manufacturer.toLowerCase().includes(term)
+            );
+        }
 
+        // Apply category filter
+        if (currentFilters.category) {
+            filtered = filtered.filter(car => 
+                car.category === currentFilters.category
+            );
+        }
+
+        // Apply manufacturer filter
+        if (currentFilters.manufacturer) {
+            filtered = filtered.filter(car => 
+                car.manufacturer === currentFilters.manufacturer
+            );
+        }
+
+        // Apply price filters
+        if (currentFilters.minPrice) {
+            filtered = filtered.filter(car => 
+                car.pricePerDay >= Number(currentFilters.minPrice)
+            );
+        }
+        if (currentFilters.maxPrice) {
+            filtered = filtered.filter(car => 
+                car.pricePerDay <= Number(currentFilters.maxPrice)
+            );
+        }
+
+        // Apply sorting
         if (currentFilters.sortBy) {
             filtered.sort((a, b) => {
                 switch (currentFilters.sortBy) {
-                    case 'price-asc': return a.pricePerDay - b.pricePerDay;
-                    case 'price-desc': return b.pricePerDay - a.pricePerDay;
-                    case 'rating': return b.averageRating - a.averageRating;
-                    default: return 0;
+                    case 'price-asc':
+                        return a.pricePerDay - b.pricePerDay;
+                    case 'price-desc':
+                        return b.pricePerDay - a.pricePerDay;
+                    case 'rating':
+                        return b.averageRating - a.averageRating;
+                    default:
+                        return 0;
                 }
             });
         }
@@ -196,6 +236,21 @@ export default function CarsPage() {
                             <option value="price-asc">Price: Low to High</option>
                             <option value="price-desc">Price: High to Low</option>
                             <option value="rating">Rating</option>
+                        </select>
+                        <select
+                            name="category"
+                            value={filters.category}
+                            onChange={handleFilterChange}
+                            className="bg-slate-700/50 border border-blue-500/20 rounded-xl p-3 text-gray-100 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:outline-none transition-all duration-300"
+                        >
+                            <option value="">All Categories</option>
+                            <option value="Sedan">Sedan</option>
+                            <option value="SUV">SUV</option>
+                            <option value="Hatchback">Hatchback</option>
+                            <option value="Luxury">Luxury</option>
+                            <option value="Sports">Sports</option>
+                            <option value="Van">Van</option>
+                            <option value="Pickup">Pickup</option>
                         </select>
                     </div>
                 </div>

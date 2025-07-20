@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { FiSearch, FiMapPin, FiCalendar, FiClock, FiStar, FiChevronRight } from 'react-icons/fi';
 import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin } from 'react-icons/fa';
@@ -7,6 +6,7 @@ import Navbar from '../components/NavBar'
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import Image from 'next/image';
+import RoleTest from '../components/RoleTest'
 
 const CarRentalHomepage = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -124,7 +124,7 @@ const CarRentalHomepage = () => {
                   </a>
                 </button>
                 <button className="w-full sm:w-auto bg-transparent border-2 border-blue-500/30 text-blue-400 px-8 py-4 rounded-xl font-semibold hover:bg-blue-500/10 transition-all duration-300 flex items-center justify-center">
-                  <span>Learn More</span>
+                  <span><a href='/services'>Learn more</a></span>
                   <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -354,7 +354,7 @@ const CarRentalHomepage = () => {
                 </svg>
               </button>
               <button className="w-full sm:w-auto bg-transparent border-2 border-blue-500/30 text-blue-400 px-8 py-4 rounded-xl font-semibold hover:bg-blue-500/10 transition-all duration-300 flex items-center justify-center">
-                <span>Learn More</span>
+                <span><a href='/service'>Learn More</a></span>
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -363,8 +363,6 @@ const CarRentalHomepage = () => {
           </div>
         </div>
       </div>
-
-    
     </div>
   );
 };

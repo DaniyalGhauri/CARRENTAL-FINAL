@@ -50,7 +50,7 @@ export default function CarChatbot() {
         averageRating: car.averageRating,
       }));
 
-      const genAI = new GoogleGenerativeAI('AIzaSyAa10NZ3WLd3GGI_RYyuccr6BqtqhEJoTA');
+      const genAI = new GoogleGenerativeAI('AIzaSyBGwUz2PCXQgitM3zOk9__GiUisCfoy0gE');
       const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
       const prompt = `

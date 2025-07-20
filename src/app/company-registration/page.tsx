@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { uploadFile } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -15,6 +15,8 @@ export default function CompanyRegistration() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [isRegistered, setIsRegistered] = useState(false);
     const [documents, setDocuments] = useState<File[]>([]);
 
     useEffect(() => {
@@ -24,6 +26,16 @@ export default function CompanyRegistration() {
         });
     }, []);
 
+    const resetErrorAfterTimeout = (msg: string, isSuccess = false) => {
+        if (isSuccess) {
+            setSuccess(msg);
+            setTimeout(() => setSuccess(''), 5000);
+        } else {
+            setError(msg);
+            setTimeout(() => setError(''), 5000);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
@@ -32,11 +44,16 @@ export default function CompanyRegistration() {
         const formData = new FormData(e.currentTarget);
         const email = formData.get('email') as string;
         const password = formData.get('password') as string;
+        const cnic = formData.get('cnic') as string;
 
         try {
             // Create auth account
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const uid = userCredential.user.uid;
+            const user = userCredential.user;
+            const uid = user.uid;
+
+            // Send email verification
+            await sendEmailVerification(user);
 
             // Upload documents
             const documentUrls = await Promise.all(
@@ -50,6 +67,7 @@ export default function CompanyRegistration() {
                 name: formData.get('companyName') as string,
                 email,
                 phone: formData.get('phone') as string,
+                cnic,
                 address: formData.get('address') as string,
                 documents: documentUrls,
                 isVerified: false,
@@ -61,14 +79,32 @@ export default function CompanyRegistration() {
             };
 
             await setDoc(doc(db, 'users', uid), userData);
-            router.push('/company-dashboard');
-        } catch (err) {
-            setError('Failed to register company. Please try again.');
-            console.error(err);
-        } finally {
+            
+            setIsRegistered(true);
+            resetErrorAfterTimeout("Company registered successfully! Verification email sent. Please check your inbox.", true);
+        } catch (err: any) {
             setLoading(false);
+            if (err.code === 'auth/email-already-in-use') {
+                resetErrorAfterTimeout("Email already in use. Please login instead.");
+            } else if (err.code === 'auth/weak-password') {
+                resetErrorAfterTimeout("Password should be at least 6 characters.");
+            } else if (err.code === 'auth/invalid-email') {
+                resetErrorAfterTimeout("Please enter a valid email address.");
+            } else {
+                resetErrorAfterTimeout('Failed to register company. Please try again.');
+            }
+            console.error(err);
         }
     };
+
+    useEffect(() => {
+        if (isRegistered) {
+            const timer = setTimeout(() => {
+                router.push('/emailVerification');
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [isRegistered, router]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
@@ -106,6 +142,21 @@ export default function CompanyRegistration() {
                             </div>
                         )}
 
+                        {success && (
+                            <div className="mb-4 bg-green-500/10 border border-green-500/20 text-green-400 p-4 rounded-lg backdrop-blur-sm" data-aos="fade-up">
+                                <div className="flex">
+                                    <div className="flex-shrink-0">
+                                        <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.707 7.293a1 1 0 00-1.414 1.414L10.586 10l-1.293 1.293a1 1 0 101.414 1.414L12 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-3">
+                                        <p className="text-sm">{success}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-300">
@@ -120,6 +171,22 @@ export default function CompanyRegistration() {
                                         name="companyName"
                                         required
                                         className="appearance-none block w-full pl-10 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg shadow-sm placeholder-gray-400 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-300"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300">
+                                    CNIC
+                                </label>
+                                <div className="mt-1 relative">
+                                    <input
+                                        type="text"
+                                        name="cnic"
+                                        required
+                                        pattern="[0-9]{5}-[0-9]{7}-[0-9]{1}"
+                                        title="Enter CNIC in 12345-1234567-1 format"
+                                        className="appearance-none block w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg shadow-sm placeholder-gray-400 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-300"
                                     />
                                 </div>
                             </div>

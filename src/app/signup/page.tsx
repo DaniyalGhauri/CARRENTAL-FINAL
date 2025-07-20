@@ -35,7 +35,7 @@ export default function SignUp() {
         }
     };
 
-    const signUp = async (email: string, password: string, name: string, phone: string = "") => {
+    const signUp = async (email: string, password: string, name: string, phone: string, cnic: string) => {
         setIsLoading(true);
         try {
             const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
@@ -43,7 +43,7 @@ export default function SignUp() {
 
             await sendEmailVerification(user);
 
-            await saveUserToFirebase(email, name, user.uid, 'customer', phone);
+            await saveUserToFirebase(email, name, user.uid, 'customer', phone, cnic);
 
             setIsSignedUp(true);
             resetErrorAfterTimeout("Verification email sent! Please check your inbox.", true);
@@ -74,13 +74,15 @@ export default function SignUp() {
         name: string,
         uid: string,
         role: 'customer' | 'company' | 'admin',
-        phone: string = ""
+        phone: string,
+        cnic: string
     ) => {
         const user: User = {
             id: uid,
             name: name,
             email: email,
             phone: phone,
+            cnic: cnic,
             role: role,
             bookings: "",
             createdAt: new Date()
@@ -164,7 +166,8 @@ export default function SignUp() {
                         const password = formData.get('password') as string;
                         const name = formData.get('name') as string;
                         const phone = formData.get('phone') as string;
-                        signUp(email, password, name, phone);
+                        const cnic = formData.get('cnic') as string;
+                        signUp(email, password, name, phone, cnic);
                     }}>
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-gray-300">
@@ -200,7 +203,7 @@ export default function SignUp() {
 
                         <div>
                             <label htmlFor="phone" className="block text-sm font-medium text-gray-300">
-                                Phone Number (Optional)
+                                Phone Number
                             </label>
                             <div className="mt-1">
                                 <input
@@ -208,6 +211,25 @@ export default function SignUp() {
                                     name="phone"
                                     type="tel"
                                     autoComplete="tel"
+                                    required
+                                    className="appearance-none block w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-300"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="cnic" className="block text-sm font-medium text-gray-300">
+                                CNIC
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    id="cnic"
+                                    name="cnic"
+                                    type="text"
+                                    autoComplete="off"
+                                    required
+                                    pattern="[0-9]{5}-[0-9]{7}-[0-9]{1}"
+                                    title="Enter CNIC in 12345-1234567-1 format"
                                     className="appearance-none block w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-300"
                                 />
                             </div>

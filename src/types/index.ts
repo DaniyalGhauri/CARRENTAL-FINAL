@@ -2,6 +2,7 @@ export interface Car {
     id: string;
     name: string;
     manufacturer: string;
+    category: 'Sedan' | 'SUV' | 'Hatchback' | 'Luxury' | 'Sports' | 'Van' | 'Pickup';
     pricePerDay: number;
     fuelEfficiency: string;
     images: string[];
@@ -39,6 +40,7 @@ export interface Booking {
     status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
     paymentStatus: 'pending' | 'completed';
     createdAt: Date;
+    user?: User;
 }
 
 export interface RentalCompany {
@@ -59,7 +61,8 @@ export interface User {
     name: string;
     email: string;
     phone: string;
+    cnic: string;
     role: 'customer' | 'company' | 'admin';
     bookings: string;
-    createdAt: Date;
+    createdAt: Date;
 }

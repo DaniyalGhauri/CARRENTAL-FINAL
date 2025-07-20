@@ -1,17 +1,53 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth, addCar, uploadFile } from '@/lib/firebase.js';
+import { auth, db, uploadFile } from '@/lib/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { Car } from '@/types';
 import RouteProtection from '@/components/RouteProtection';
 
-export default function AddCar() {
+export default function EditCar({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = use(params);
     const router = useRouter();
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [images, setImages] = useState<File[]>([]);
-    const [documents, setDocuments] = useState<File[]>([]);
+    const [car, setCar] = useState<Car | null>(null);
+    const [newImages, setNewImages] = useState<File[]>([]);
+    const [newDocuments, setNewDocuments] = useState<File[]>([]);
+
+    useEffect(() => {
+        const loadCar = async () => {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    router.push('/company-login');
+                    return;
+                }
+
+                const carDoc = await getDoc(doc(db, 'cars', resolvedParams.id));
+                if (!carDoc.exists()) {
+                    setError('Car not found');
+                    return;
+                }
+
+                const carData = carDoc.data() as Car;
+                if (carData.companyId !== user.uid) {
+                    setError('You do not have permission to edit this car');
+                    return;
+                }
+
+                setCar({ ...carData, id: carDoc.id });
+            } catch (err) {
+                console.error('Error loading car:', err);
+                setError('Failed to load car details');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadCar();
+    }, [resolvedParams.id, router]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -26,63 +62,77 @@ export default function AddCar() {
 
             const formData = new FormData(e.currentTarget);
 
-            // Upload images
-            const imageUrls = await Promise.all(
-                images.map(file => 
+            // Upload new images if any
+            const newImageUrls = await Promise.all(
+                newImages.map(file => 
                     uploadFile(file, `car-images/${user.uid}/${file.name}`)
                 )
             );
 
-            // Upload documents
-            const documentUrls = await Promise.all(
-                documents.map(file => 
+            // Upload new documents if any
+            const newDocumentUrls = await Promise.all(
+                newDocuments.map(file => 
                     uploadFile(file, `car-documents/${user.uid}/${file.name}`)
                 )
             );
 
-            // Create car listing
-            const carData: Omit<Car, 'id'> = {
+            // Update car data
+            const updatedCarData = {
                 name: formData.get('name') as string,
                 manufacturer: formData.get('manufacturer') as string,
                 category: formData.get('category') as Car['category'],
                 pricePerDay: Number(formData.get('pricePerDay')),
                 fuelEfficiency: formData.get('fuelEfficiency') as string,
-                images: imageUrls,
-                documents: documentUrls,
-                isAvailable: true,
                 location: {
                     lat: Number(formData.get('latitude')),
                     lng: Number(formData.get('longitude'))
                 },
                 features: (formData.get('features') as string).split(',').map(f => f.trim()),
-                companyId: user.uid,
-                reviews: [],
-                averageRating: 0
+                images: [...(car?.images || []), ...newImageUrls],
+                documents: [...(car?.documents || []), ...newDocumentUrls],
             };
 
-            await addCar(carData);
+            await updateDoc(doc(db, 'cars', resolvedParams.id), updatedCarData);
             router.push('/company-dashboard');
         } catch (err) {
-            setError('Failed to add car. Please try again.');
+            setError('Failed to update car. Please try again.');
             console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+                <div className="text-xl text-gray-600">Loading...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+                <div className="bg-white p-8 rounded-lg shadow-lg">
+                    <div className="text-red-500 mb-4">{error}</div>
+                    <button
+                        onClick={() => router.push('/company-dashboard')}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    >
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <RouteProtection allowedRoles={['company']} redirectTo="/">
             <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8">
                     <h2 className="text-3xl font-bold text-center text-gray-900 mb-8">
-                        Add New Car
+                        Edit Car
                     </h2>
-
-                    {error && (
-                        <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6">
-                            {error}
-                        </div>
-                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
@@ -92,6 +142,7 @@ export default function AddCar() {
                             <input
                                 type="text"
                                 name="name"
+                                defaultValue={car?.name}
                                 required
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                             />
@@ -104,6 +155,7 @@ export default function AddCar() {
                             <input
                                 type="text"
                                 name="manufacturer"
+                                defaultValue={car?.manufacturer}
                                 required
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                             />
@@ -115,6 +167,7 @@ export default function AddCar() {
                             </label>
                             <select
                                 name="category"
+                                defaultValue={car?.category}
                                 required
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                             >
@@ -136,6 +189,7 @@ export default function AddCar() {
                             <input
                                 type="number"
                                 name="pricePerDay"
+                                defaultValue={car?.pricePerDay}
                                 required
                                 min="0"
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
@@ -149,6 +203,7 @@ export default function AddCar() {
                             <input
                                 type="text"
                                 name="fuelEfficiency"
+                                defaultValue={car?.fuelEfficiency}
                                 required
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                             />
@@ -163,6 +218,7 @@ export default function AddCar() {
                                     type="number"
                                     name="latitude"
                                     placeholder="Latitude"
+                                    defaultValue={car?.location.lat}
                                     step="any"
                                     required
                                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
@@ -171,6 +227,7 @@ export default function AddCar() {
                                     type="number"
                                     name="longitude"
                                     placeholder="Longitude"
+                                    defaultValue={car?.location.lng}
                                     step="any"
                                     required
                                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
@@ -185,6 +242,7 @@ export default function AddCar() {
                             <input
                                 type="text"
                                 name="features"
+                                defaultValue={car?.features.join(', ')}
                                 placeholder="AC, GPS, Bluetooth, etc."
                                 required
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
@@ -193,7 +251,23 @@ export default function AddCar() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700">
-                                Car Images
+                                Current Images
+                            </label>
+                            <div className="mt-2 grid grid-cols-2 gap-4">
+                                {car?.images.map((image, index) => (
+                                    <img
+                                        key={index}
+                                        src={image}
+                                        alt={`Car image ${index + 1}`}
+                                        className="w-full h-32 object-cover rounded"
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">
+                                Add New Images
                             </label>
                             <input
                                 type="file"
@@ -201,7 +275,7 @@ export default function AddCar() {
                                 accept="image/*"
                                 onChange={(e) => {
                                     const files = Array.from(e.target.files || []);
-                                    setImages(files);
+                                    setNewImages(files);
                                 }}
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                             />
@@ -209,7 +283,7 @@ export default function AddCar() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700">
-                                Car Documents
+                                Add New Documents
                             </label>
                             <input
                                 type="file"
@@ -217,23 +291,23 @@ export default function AddCar() {
                                 accept=".pdf,.doc,.docx"
                                 onChange={(e) => {
                                     const files = Array.from(e.target.files || []);
-                                    setDocuments(files);
+                                    setNewDocuments(files);
                                 }}
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                             />
                             <p className="mt-1 text-sm text-gray-500">
-                                Upload registration, insurance, etc.
+                                Upload additional registration, insurance, etc.
                             </p>
                         </div>
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
                                 loading ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                         >
-                            {loading ? 'Adding Car...' : 'Add Car'}
+                            {loading ? 'Updating Car...' : 'Update Car'}
                         </button>
                     </form>
                 </div>

@@ -21,7 +21,7 @@ const Footer = () => {
      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
          <div>
-           <h3 className="text-xl font-bold mb-4">DriveEasy</h3>
+           <h3 className="text-xl font-bold mb-4">DriveSmart</h3>
            <p className="text-gray-400">
              Your trusted partner for car rentals with the best prices and excellent service.
            </p>
@@ -115,18 +115,18 @@ const Footer = () => {
            <ul className="space-y-2 text-gray-400">
              <li className="flex items-center">
                <FaMapMarkerAlt className="mr-2" />
-               1234 Rental Street, San Francisco, CA 94107
+               DriveSmart Rental near UMT, Johar town, Lahore
              </li>
              <li className="flex items-center">
                <FaPhone className="mr-2" />
                <a href="tel:+1234567890" className="hover:text-white transition-colors duration-300">
-                 (123) 456-7890
+                 0300-5248625
                </a>
              </li>
              <li className="flex items-center">
                <FaEnvelope className="mr-2" />
                <a href="mailto:info@driveeasy.com" className="hover:text-white transition-colors duration-300">
-                 info@driveeasy.com
+                 DriveSmart@gmail.com
                </a>
              </li>
              <li className="flex items-center">

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Building2 } from 'lucide-react';
 import { useAuthContext } from '@/lib/authContext';
 import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin, FaPhone, FaEnvelope } from 'react-icons/fa';
 
@@ -46,11 +46,12 @@ const Navbar = () => {
             <div className="flex items-center space-x-6">
               <a href="tel:+1234567890" className="flex items-center text-gray-300 hover:text-blue-400 transition-colors duration-300">
                 <FaPhone className="mr-2" />
-                <span className="hidden sm:inline text-sm">+1 (234) 567-890</span>
+                <span className="hidden sm:inline text-sm">0300 5248625</span>
               </a>
               <a href="mailto:info@driveeasy.com" className="flex items-center text-gray-300 hover:text-blue-400 transition-colors duration-300">
                 <FaEnvelope className="mr-2" />
-                <span className="hidden sm:inline text-sm">info@driveeasy.com</span>
+                <span className="hidden sm:inline text-sm">Drivesmart@gamil.com
+</span>
               </a>
             </div>
 
@@ -112,6 +113,9 @@ const Navbar = () => {
             )}
             <Link href="/services" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Services</Link>
             <Link href="/contact" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Contact</Link>
+            {user?.role === 'customer' && (
+              <Link href="/profile" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Profile</Link>
+            )}
             {user?.role === 'company' && (
               <Link href="/company-dashboard" className="text-gray-300 hover:text-blue-400 transition-colors duration-300">Dashboard</Link>
             )}
@@ -145,9 +149,10 @@ const Navbar = () => {
                 </button>
                 <button
                   onClick={() => router.push('/company-login')}
-                  className="text-gray-300 hover:text-blue-400 transition-colors duration-300"
+                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg hover:shadow-purple-500/25 hover:scale-[1.02] transition-all duration-300 flex items-center space-x-2 border border-purple-400/20"
                 >
-                  Company Login
+                  <Building2 className="w-4 h-4" />
+                  <span>Company Portal</span>
                 </button>
               </>
             )}
@@ -178,6 +183,9 @@ const Navbar = () => {
             )}
             <Link href="/services" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Services</Link>
             <Link href="/contact" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Contact</Link>
+            {user?.role === 'customer' && (
+              <Link href="/profile" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Profile</Link>
+            )}
             {user?.role === 'company' && (
               <Link href="/company-dashboard" className="block text-gray-300 hover:text-blue-400 transition-colors duration-300">Dashboard</Link>
             )}
@@ -208,9 +216,10 @@ const Navbar = () => {
                 </button>
                 <button
                   onClick={() => router.push('/company-login')}
-                  className="w-full text-left px-4 py-2 text-gray-300 hover:text-blue-400 transition-colors duration-300"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg hover:shadow-purple-500/25 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center space-x-2 border border-purple-400/20"
                 >
-                  Company Login
+                  <Building2 className="w-5 h-5" />
+                  <span className="font-semibold">Company Portal</span>
                 </button>
               </>
             )}

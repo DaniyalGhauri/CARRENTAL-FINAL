@@ -42,6 +42,7 @@ const addTestCar = async () => {
     const testCar = {
         name: 'Toyota Camry 2023',
         manufacturer: 'Toyota',
+        category: 'Sedan',
         pricePerDay: 50,
         fuelEfficiency: '35 mpg',
         images: ['https://example.com/camry.jpg'],
@@ -76,6 +77,7 @@ const getAvailableCars = async () => {
                 id: doc.id,
                 name: data.name || '',
                 manufacturer: data.manufacturer || '',
+                category: data.category || 'Sedan',
                 pricePerDay: data.pricePerDay || 0,
                 fuelEfficiency: data.fuelEfficiency || '',
                 images: data.images || [],
@@ -96,6 +98,7 @@ const getAvailableCars = async () => {
             id: doc.id,
             name: data.name || '',
             manufacturer: data.manufacturer || '',
+            category: data.category || 'Sedan',
             pricePerDay: data.pricePerDay || 0,
             fuelEfficiency: data.fuelEfficiency || '',
             images: data.images || [],

@@ -17,10 +17,10 @@ export default function RoleTest() {
     return (
         <div className="p-4 bg-green-100 border border-green-400 rounded">
             <h3 className="font-bold">Authentication Status</h3>
-            <p><strong>User:</strong> {user.name || user.email}</p>
+            <p><strong>User:</strong> {('name' in user && user.name) ? user.name : user.email}</p>
             <p><strong>Role:</strong> {user.role}</p>
             <p><strong>Email Verified:</strong> {user.emailVerified ? 'Yes' : 'No'}</p>
-            
+
             <div className="mt-4">
                 <h4 className="font-semibold">Access Permissions:</h4>
                 <ul className="list-disc list-inside">
@@ -31,4 +31,4 @@ export default function RoleTest() {
             </div>
         </div>
     );
-} 
+}

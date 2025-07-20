@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import CarCard from "@/components/CarCard";
-import BookingModal from "@/components/BookingModal";
+
 
 const dummyCars = [
   { id: "1", name: "Toyota Corolla", brand: "Toyota", pricePerDay: 50, fuelEfficiency: 18, image: "/images/corolla.jpg", available: true },
@@ -108,8 +108,7 @@ export default function AvailableCars() {
         )}
       </div>
 
-      {/* Booking Modal */}
-      {selectedCar && <BookingModal car={selectedCar} onClose={() => setSelectedCar(null)} />}
+    
     </div>
   );
 }

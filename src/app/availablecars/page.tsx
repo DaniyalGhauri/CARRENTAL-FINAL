@@ -3,17 +3,50 @@
 import { useState } from "react";
 import CarCard from "@/components/CarCard";
 
+type Car = {
+  id: string;
+  name: string;
+  brand: string;
+  pricePerDay: number;
+  fuelEfficiency: number;
+  image: string;
+  available: boolean;
+};
 
-const dummyCars = [
-  { id: "1", name: "Toyota Corolla", brand: "Toyota", pricePerDay: 50, fuelEfficiency: 18, image: "/images/corolla.jpg", available: true },
-  { id: "2", name: "Honda Civic", brand: "Honda", pricePerDay: 65, fuelEfficiency: 16, image: "/images/civic.jpg", available: true },
-  { id: "3", name: "Hyundai Elantra", brand: "Hyundai", pricePerDay: 55, fuelEfficiency: 20, image: "/images/elantra.jpg", available: true },
+const dummyCars: Car[] = [
+  {
+    id: "1",
+    name: "Toyota Corolla",
+    brand: "Toyota",
+    pricePerDay: 50,
+    fuelEfficiency: 18,
+    image: "/images/corolla.jpg",
+    available: true,
+  },
+  {
+    id: "2",
+    name: "Honda Civic",
+    brand: "Honda",
+    pricePerDay: 65,
+    fuelEfficiency: 16,
+    image: "/images/civic.jpg",
+    available: true,
+  },
+  {
+    id: "3",
+    name: "Hyundai Elantra",
+    brand: "Hyundai",
+    pricePerDay: 55,
+    fuelEfficiency: 20,
+    image: "/images/elantra.jpg",
+    available: true,
+  },
 ];
 
 export default function AvailableCars() {
-  const [cars, setCars] = useState(dummyCars);
-  const [filteredCars, setFilteredCars] = useState(dummyCars);
-  const [selectedCar, setSelectedCar] = useState(null);
+  const [cars, setCars] = useState<Car[]>(dummyCars);
+  const [filteredCars, setFilteredCars] = useState<Car[]>(dummyCars);
+  const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -107,8 +140,6 @@ export default function AvailableCars() {
           <p className="text-gray-500 col-span-full">No cars match your search.</p>
         )}
       </div>
-
-    
     </div>
   );
 }

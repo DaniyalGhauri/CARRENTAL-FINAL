@@ -14,10 +14,13 @@ export default function RoleTest() {
         );
     }
 
+    // Type guard to check if 'name' exists
+    const displayName = (user as any).name || user.email;
+
     return (
         <div className="p-4 bg-green-100 border border-green-400 rounded">
             <h3 className="font-bold">Authentication Status</h3>
-            <p><strong>User:</strong> {('name' in user && user.name) ? user.name : user.email}</p>
+            <p><strong>User:</strong> {displayName}</p>
             <p><strong>Role:</strong> {user.role}</p>
             <p><strong>Email Verified:</strong> {user.emailVerified ? 'Yes' : 'No'}</p>
 

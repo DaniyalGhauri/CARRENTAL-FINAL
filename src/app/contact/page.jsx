@@ -123,7 +123,7 @@ export default function ContactPage() {
                   <div>
                     <h4 className="text-gray-300 font-medium mb-1">Email</h4>
                     <a href="mailto:info@carrental.com" className="text-blue-400 hover:text-blue-300 transition-colors">
-                      info@carrental.com
+                      DriveSmart@gmail.com
                     </a>
                   </div>
                 </div>
@@ -137,7 +137,7 @@ export default function ContactPage() {
                   <div>
                     <h4 className="text-gray-300 font-medium mb-1">Phone</h4>
                     <a href="tel:+1234567890" className="text-blue-400 hover:text-blue-300 transition-colors">
-                      (123) 456-7890
+                      03005248625
                     </a>
                   </div>
                 </div>
@@ -151,7 +151,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h4 className="text-gray-300 font-medium mb-1">Location</h4>
-                    <p className="text-gray-400">123 Car Street, Auto City, AC 12345</p>
+                    <p className="text-gray-400">DriveSmart Car Rentals , Jhor Town lahore</p>
                   </div>
                 </div>
               </div>
